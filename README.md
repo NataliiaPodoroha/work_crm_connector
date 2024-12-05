@@ -74,18 +74,18 @@
 2. **Setup Environment Variables:**
 
 
-   - Copy `.env.sample` to `.env`:
+- Copy `.env.sample` to `.env`:
       ```bash
       cp .env.sample .env
       ```
-   - Update the `.env` file with your configuration details.
-   - Note: The `.env` file contains sensitive information. Make sure not to share it publicly.
+- Update the `.env` file with your configuration details.
+- Note: The `.env` file contains sensitive information. Make sure not to share it publicly.
 
 
 3. **Install Dependencies:**
 
 
-   - Activate a virtual environment:
+- Activate a virtual environment:
      ```bash
      python -m venv venv
      source venv/bin/activate  # On Windows use `venv\Scripts\activate`
@@ -97,8 +97,13 @@
   
 4. **Run the Application:**
 
-
-   - Start the services using Docker Compose:
+- Build the Docker image:
      ```bash
-     docker-compose up
+     docker compose build
+     ```
+
+
+- Start the services using Docker Compose:
+     ```bash
+     docker compose up
      ```
