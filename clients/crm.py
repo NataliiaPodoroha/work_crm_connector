@@ -16,7 +16,6 @@ class CardStatus:
     TEST_PERIOD = "64"
     WORK = "65"
     HIRED = "32"
-    NO_ANSWER = "129"
 
 
 class CRMClientException(Exception):
@@ -62,7 +61,6 @@ class CRMClient:
                 CardStatus.TEST_PERIOD,
                 CardStatus.WORK,
                 CardStatus.HIRED,
-                CardStatus.NO_ANSWER,
             ]
         )
 

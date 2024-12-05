@@ -1,0 +1,53 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app_network
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: celery_worker
+    command: celery -A celery_worker worker --loglevel=info -Q work
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    networks:
+      - app_network
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: celery_beat
+    command: celery -A celery_worker beat --loglevel=info
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    networks:
+      - app_network
+
+  flower:
+    image: mher/flower:latest
+    build:
+      context: .
+    env_file:
+      - .env
+    container_name: flower
+    command: celery -A celery_worker flower --loglevel=info
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge

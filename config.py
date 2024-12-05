@@ -17,3 +17,12 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
 
 PIPELINE_ID = os.getenv("PIPELINE_ID")
 SOURCE_ID = os.getenv("SOURCE_ID")
+
+SMTP_CONFIG = {
+    "smtp_server": os.getenv("SMTP_SERVER"),
+    "smtp_port": int(os.getenv("SMTP_PORT")),
+    "smtp_username": os.getenv("SMTP_USERNAME"),
+    "smtp_password": os.getenv("SMTP_PASSWORD"),
+    "sender_email": os.getenv("SENDER_EMAIL"),
+    "admin_email": os.getenv("ADMIN_EMAIL"),
+}

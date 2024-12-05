@@ -1,9 +1,10 @@
+import logging
 from datetime import datetime
 from celery import shared_task
-
 import config
 from clients.work import WorkClient
 from clients.crm import CRMClient, COVER_CUSTOM_FIELD_UUID, CardStatus
+from clients.notification import NotificationClient
 from utils.cv_file_generator import GENERATED_CV_FILE_NAME
 from utils.redis import (
     filter_already_processed_responses,
@@ -12,11 +13,17 @@ from utils.redis import (
 from utils.work import (
     attach_cv_from_workua,
     attach_cv_from_text,
+    filter_responses_without_phone,
+    filter_duplicate_responses,
 )
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @shared_task
 def process_work_responses():
+    logger.info("Starting to process work responses")
     work_client = WorkClient(
         url=config.WORK_API_URL,
         username=config.WORK_API_USERNAME,
@@ -28,24 +35,37 @@ def process_work_responses():
         api_key=config.CRM_API_KEY,
     )
 
+    notification_client = NotificationClient(**config.SMTP_CONFIG)
+
     all_jobs = work_client.get_all_jobs()
     active_jobs = [job for job in all_jobs["items"] if job["active"] == 1]
 
     cards = crm_client.get_all_cards(pipeline_id=config.PIPELINE_ID)
 
+    created_or_updated_cards = []
+
     for job in active_jobs:
+        logger.info(f"Processing job: {job['name']} (ID: {job['id']})")
         responses = fetch_job_responses(work_client, job)
         responses = filter_already_processed_responses(responses, job["id"])
+        responses = filter_responses_without_phone(responses)
+        responses = filter_duplicate_responses(responses)
 
-        # TODO add logging for processed responses
+        logger.info(f"Found {len(responses)} responses for job: {job['name']}")
 
         for response in responses:
-            process_response(work_client, crm_client, response, job, cards)
+            process_response(
+                work_client, crm_client, response, job, cards, created_or_updated_cards
+            )
 
         update_processed_responses_ids(responses, job["id"])
 
+    notification_client.send_summary_notification(created_or_updated_cards)
+    logger.info("Finished processing work responses")
+
 
 def fetch_job_responses(work_client, job):
+    logger.info(f"Fetching responses for job: {job['name']} (ID: {job['id']})")
     all_responses = []
     job_publish_date = datetime.fromisoformat(job["date"])
     before_id = None
@@ -69,10 +89,13 @@ def fetch_job_responses(work_client, job):
 
         before_id = responses[-1]["id"]
 
+    logger.info(f"Fetched {len(all_responses)} responses for job: {job['name']}")
     return all_responses
 
 
-def process_response(work_client, crm_client, response, job, cards):
+def process_response(
+    work_client, crm_client, response, job, cards, created_or_updated_cards
+):
     phone = response.get("phone")
     card = next(
         (card for card in cards if card.get("contact", {}).get("phone") == phone), None
@@ -91,9 +114,13 @@ def process_response(work_client, crm_client, response, job, cards):
             job_title=job["name"],
             cover=cover,
         )
+        created_or_updated_cards.append({"id": card["id"], "action": "created"})
+        logger.info(f"Created new card for response: {response['id']}")
 
     else:
         update_card(crm_client, card, response)
+        created_or_updated_cards.append({"id": card["id"], "action": "updated"})
+        logger.info(f"Updated existing card for response: {response['id']}")
 
     attach_cv(work_client, crm_client, card, job["id"], response)
 

@@ -1,6 +1,29 @@
 import magic
+from collections import defaultdict
+from datetime import datetime
 from requests.utils import parse_header_links
 from utils.cv_file_generator import create_cv_document
+
+
+def filter_responses_without_phone(responses):
+    return [response for response in responses if response.get("phone")]
+
+
+def filter_duplicate_responses(responses):
+    phone_map = defaultdict(list)
+
+    for response in responses:
+        phone = response["phone"]
+        phone_map[phone].append(response)
+
+    latest_responses = []
+    for phone, response_group in phone_map.items():
+        latest_response = max(
+            response_group, key=lambda r: datetime.fromisoformat(r["date"])
+        )
+        latest_responses.append(latest_response)
+
+    return latest_responses
 
 
 def get_file_info(response, default_name="unknown"):

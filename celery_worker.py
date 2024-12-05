@@ -9,9 +9,9 @@ from tasks import process_work_responses
 
 
 logging.basicConfig(
-    filename='celery_worker.log',
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
 )
 
 
